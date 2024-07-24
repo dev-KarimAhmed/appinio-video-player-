@@ -1,5 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- 
+  This MUST ADDED : -
+  android:enableOnBackInvokedCallback="true"
+    android:usesCleartextTraffic="true"
+   -->
     <application
+    android:enableOnBackInvokedCallback="true"
     android:usesCleartextTraffic="true"
         android:label="video_app"
         android:name="${applicationName}"

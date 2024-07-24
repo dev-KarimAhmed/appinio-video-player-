@@ -1,7 +1,12 @@
+import 'dart:developer';
+
 import 'package:appinio_video_player/appinio_video_player.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
+import 'package:video_app/models/video_model.dart';
 
 void main() => runApp(const MyApp());
 
@@ -10,45 +15,55 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: MyHomePage(),
+      home: MyHomePage(
+        videos: videosModels,
+      ),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
+  const MyHomePage({super.key, required this.videos});
+  final List<VideoModel> videos;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late CachedVideoPlayerController _videoPlayerController,
-      _videoPlayerController2,
-      _videoPlayerController3;
+  late CachedVideoPlayerController _videoPlayerController;
+  late CachedVideoPlayerController _videoPlayerController2;
+  late CachedVideoPlayerController _videoPlayerController3;
 
   late CustomVideoPlayerController _customVideoPlayerController;
-  late CustomVideoPlayerWebController _customVideoPlayerWebController;
 
   final CustomVideoPlayerSettings _customVideoPlayerSettings =
-      const CustomVideoPlayerSettings(showSeekButtons: true);
-
-  final CustomVideoPlayerWebSettings _customVideoPlayerWebSettings =
-      CustomVideoPlayerWebSettings(
-    src: longVideo,
+      const CustomVideoPlayerSettings(
+    showSeekButtons: true,
+    controlBarDecoration: BoxDecoration(
+      color: Color.fromRGBO(0, 0, 0, 0.5),
+      borderRadius: BorderRadius.all(Radius.circular(10)),
+    ),
   );
 
   @override
   void initState() {
     super.initState();
+    _initializeVideoControllers(widget.videos.first);
+  }
 
+  void _initializeVideoControllers(VideoModel video) {
     _videoPlayerController = CachedVideoPlayerController.network(
-      longVideo,
-    )..initialize().then((value) => setState(() {}));
-    _videoPlayerController2 = CachedVideoPlayerController.network(video240);
-    _videoPlayerController3 = CachedVideoPlayerController.network(video480);
+      video.videoUrl,
+    )..initialize().then((_) => setState(() {}));
+
+    _videoPlayerController2 =
+        CachedVideoPlayerController.network(video.video240);
+    _videoPlayerController3 =
+        CachedVideoPlayerController.network(video.video480);
+
     _customVideoPlayerController = CustomVideoPlayerController(
       context: context,
       videoPlayerController: _videoPlayerController,
@@ -59,15 +74,22 @@ class _MyHomePageState extends State<MyHomePage> {
         "720p": _videoPlayerController,
       },
     );
+  }
 
-    _customVideoPlayerWebController = CustomVideoPlayerWebController(
-      webVideoPlayerSettings: _customVideoPlayerWebSettings,
-    );
+  void _updateVideo(VideoModel video) {
+    _videoPlayerController.dispose();
+    _videoPlayerController2.dispose();
+    _videoPlayerController3.dispose();
+
+    _initializeVideoControllers(video);
   }
 
   @override
   void dispose() {
     _customVideoPlayerController.dispose();
+    _videoPlayerController.dispose();
+    _videoPlayerController2.dispose();
+    _videoPlayerController3.dispose();
     super.dispose();
   }
 
@@ -78,34 +100,44 @@ class _MyHomePageState extends State<MyHomePage> {
         middle: Text("Appinio Video Player"),
       ),
       body: SafeArea(
-        child: ListView(
-          physics: const NeverScrollableScrollPhysics(),
+        child: Column(
           children: [
-            kIsWeb
-                ? Expanded(
-                    child: CustomVideoPlayerWeb(
-                      customVideoPlayerWebController:
-                          _customVideoPlayerWebController,
-                    ),
-                  )
-                : CustomVideoPlayer(
-                    customVideoPlayerController: _customVideoPlayerController,
+            Padding(
+              padding: const EdgeInsets.all(4.0),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.all(Radius.circular(16)),
+                child: CustomVideoPlayer(
+                  customVideoPlayerController: _customVideoPlayerController,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ListView.separated(
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                      onTap: () {
+                        log('@$index');
+                        _updateVideo(widget.videos[index]);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text('Video [$index]'),
+                      ),
+                    );
+                  },
+                  separatorBuilder: (context, index) => Container(
+                    height: 2,
+                    color: Colors.black,
                   ),
+                  itemCount: widget.videos.length,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
-
-String longVideo =
-    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-
-String video720 =
-    "https://www.sample-videos.com/video123/mp4/720/big_buck_bunny_720p_10mb.mp4";
-
-String video480 =
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-
-String video240 =
-    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
